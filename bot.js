@@ -13,7 +13,7 @@
 *
 *	How does this work: I run the bot locally using node js. The Discord API takes care of the rest and the bot goes online in my Discord servers.
 *	Using the invite link here: https://discord.com/api/oauth2/authorize?client_id=686813289153691689&permissions=0&scope=bot
-*
+*                    
 *	References/Resources:
 *		- Discord's website: https://discord.com/
 *		- Discord developer docs: https://discord.com/developers/docs/
@@ -24,6 +24,7 @@
 // Run dotenv
 require('dotenv').config();
 
+const { VoiceChannel } = require('discord.js');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
@@ -44,10 +45,23 @@ var connectCommandStr = "connect";
 var disconnectCommandStr = "disconnect";
 var statusCommandStr = "status";
 
+// Arrary of commands for use by the help command
+var commandList = [
+	helpCommandStr,
+	alarmCommandStr,
+	connectCommandStr,
+	disconnectCommandStr,
+	echoCommandStr,
+	statusCommandStr
+];
+
 // Other variables
 var attemptedCommand; // String for the attempted command
 
 client.on('message', async msg => {	// This code block runs when a user sends a Discord message anywhere that the bot can read
+
+	// This should keep the bot from responding to itself
+	if(msg.author.bot) return;
 
 	if(msg.content.substring(0,1) != commandSymbol) // Check if msg was even a command - REMEMBER: this code runs EVERY time a message is sent in the server!
 	{
@@ -56,10 +70,11 @@ client.on('message', async msg => {	// This code block runs when a user sends a 
 	else
 	{
 		attemptedCommand = msg.content.split(" ")[0].substring(commandSymbol.length, msg.content.split(" ")[0].length) // attemptedCommand = the command minus the ! symbol
-
+		/*
 		if (msg.member.voice.channel) {		// TODO: Delete this code when you figure out how to relocate to an outside function
 			const connection = await msg.member.voice.channel.join();
 		}
+		*/
 	}
 
 	// Switch statement to figure out which command they used and to call the appropriate method
@@ -71,22 +86,22 @@ client.on('message', async msg => {	// This code block runs when a user sends a 
 			help(msg);
 			break;
 		case alarmCommandStr:
-			alarm();
+			alarm(msg);
 			break;
 		case echoCommandStr:
 			echo(msg);
 			break;
 		case connectCommandStr:
-			voiceConnect();
+			voiceConnect(msg);
 			break;
 		case disconnectCommandStr:
-			voiceDisconnect();
+			voiceDisconnect(msg);
 			break;
 		case statusCommandStr:
 			status(msg);
 			break;
 		default:
-			unrecognizedCommand(msg.content);
+			unrecognizedCommand(msg);
 			break;
 	}
 })
@@ -98,51 +113,80 @@ client.on('message', async msg => {	// This code block runs when a user sends a 
  */
 function cutOutArguments(msg)
 {
+	for(var i = 0; i < msg.content.length; i++)
+	{
+		if(msg.content.substring(i, i + 1) == " ")
+		{
+			return msg.content.substring(i + 1, msg.content.length);
+		}
+	}
 	return null;
 }
 
 
 
-//
+
 // == Functions for use when a command is invoked by a user ==
-//
+
 
 /**
  * This function simply posts this gif to the channel
+ * @param	{Object}	msg 		The actual message sent by a user
  */
-function alarm()
+function alarm(msg)
 {
 	// Send the alarm gif: https://thumbs.gfycat.com/AbsoluteWateryIsopod-size_restricted.gif
+	msg.channel.send('https://thumbs.gfycat.com/AbsoluteWateryIsopod-size_restricted.gif');
 }
 
 /**
  * This function takes in the entire message sent by a user then returns the content in a String minus the command invocations (Example: User says "!echo Hello World" this func returns "Hello World")
- * @param	{Object}	msg 		The actual message object sent by a user
+ * @param	{Object}	msg 		The actual message sent by a user
  */
-function echo(content, msg)
+function echo(msg)
 {
-	content = cutOutArguments(content);
-	msg.channel.send(content);
+	var echoedMessage = '';
+
+	if(cutOutArguments(msg) != null)
+	{
+		echoedMessage = cutOutArguments(msg);
+	}
+	else
+	{
+		echoedMessage = 'usage: ```' + commandSymbol + alarmCommandStr + ' [message to be repeated]```';
+		msg.reply(echoedMessage);
+		return;
+	}
+	
+	msg.channel.send(echoedMessage);
 }
 
 /**
  * This function sends a message informing users of what commands they can use and how to use them + includes an MOTD too
- * @param	{Object}	msg			The actual message object sent by a user
+ * @param	{Object}	msg			The message sent by a user
  */
 function help(msg)
 {
+	var helpStr = '';
+	for(var i = 0; i < commandList.length; i++)
+	{
+		helpStr = helpStr + commandList[i] + '\n';
+	}
+
 	// Print the help list
-	msg.channel.send('Hello! This bot is a work in progress. Contact my creator, @X3liteNinjaX#6891, for more info!');
+	msg.channel.send('Hello! This bot is a work in progress. Contact my creator, @X3liteNinjaX#6891, for more info!\n' + helpStr);
 }
 
 /**
  * This function updates the Discord bot's status with a given argument
- * @param	{Object}	msg		The message content sent by a user
+ * @param	{Object}	msg		The message sent by a user
  */
 function status(msg)
 {
+	var newStatus = cutOutArguments(msg);
+
 	// Sets the bot's Discord status
-	client.user.setActivity("something"); 
+	client.user.setActivity(newStatus); 
 }
 
 /**
@@ -152,6 +196,7 @@ function status(msg)
 function unrecognizedCommand(msg)
 {
 	// Inform the user that the command they have typed did not align with an existing command
+	msg.reply('that was not a message I understood... Try ' + commandSymbol + helpCommandStr + ' to get a full list of commands.')
 }
 
 /**
@@ -163,20 +208,6 @@ function voiceConnect(msg)
 	if (msg.member.voice.channel) {
 		const connection = msg.member.voice.channel.join();
 	}
-
-
-	/*
-	// Connect the bot to a voice channel
-	client.channels.cache.get("ChannelID")
-  	if (!channel) return console.error("The channel does not exist!");
-  	channel.join().then(connection => {
-    // Yay, it worked!
-    	console.log("Successfully connected.");
-  	}).catch(e => {
-    // Oh no, it errored! Let's log it to console :)
-    console.error(e);
-	});
-	*/
 }
 
 /**
@@ -185,5 +216,19 @@ function voiceConnect(msg)
  */
 function voiceDisconnect(msg)
 {
+	/* 
+	 * TODO: make this code work. 
+	 * Notes:
+	 * - Most of this code is specific to 'guilds'
+	 */
+
 	// Disconnect the bot from voice channel
+	msg.reply('whoops, this is awkward. I don\'t exactly know how to disconnect yet, sorry!');
+	if (msg.member.voice.channel) {
+		const connection = null;
+	}
+	//const connection = msg.member.voice.channel.join();
+	//voiceChannel.leave();
+	//client.leaveVoiceChannel(msg.member.voiceState.channelID);
+	//mybot.leaveVoiceChannel(msg.author.voiceChannel.id, function (error {console.log(error)});
 }
