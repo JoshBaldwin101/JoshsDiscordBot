@@ -63,7 +63,7 @@ client.on('message', async msg => {	// This code block runs when a user sends a 
 	// This should keep the bot from responding to itself
 	if(msg.author.bot) return;
 
-	if(msg.content.substring(0,1) != commandSymbol) // Check if msg was even a command - REMEMBER: this code runs EVERY time a message is sent in the server!
+	if(msg.content.substring(0,commandSymbol.length) != commandSymbol) // Check if msg was even a command - REMEMBER: this code runs EVERY time a message is sent in the server!
 	{
 		return; // No command detected, break ASAP
 	}
@@ -153,7 +153,7 @@ function echo(msg)
 	}
 	else
 	{
-		echoedMessage = 'usage: ```' + commandSymbol + alarmCommandStr + ' [message to be repeated]```';
+		echoedMessage = 'usage: ```' + commandSymbol + echoCommandStr + ' [message to be repeated]```';
 		msg.reply(echoedMessage);
 		return;
 	}
